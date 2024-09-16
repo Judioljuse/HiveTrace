@@ -179,10 +179,9 @@ export function DAG(props) {
     let message, info = false;
     if (editorState.editable) {
       if (editorState.contentComposed === "") {
-        message = "Welcome to SQLLineage Playground.\n" +
+        message = "Welcome to HiveTrace.\n" +
           "Just paste your SQL in Script View and switch back here, you'll get DAG visualization for your SQL code.\n" +
-          "Or select SQL file on the left directory tree for visualization.\n" +
-          "Have fun!"
+          "Or select SQL file on the left directory tree for visualization.\n"
         info = true
       } else {
         message = "No Lineage Info found in your SQL.\nPlease review your code in Script View."

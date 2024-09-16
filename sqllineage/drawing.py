@@ -28,7 +28,11 @@ logger = logging.getLogger(__name__)
 
 
 class SQLLineageApp:
+    """ 
+    SQLLineageApp: A simple flask-like wsgi application to serve static files and handle lineage requests.
+    """
     def __init__(self) -> None:
+        # save route path 
         self.routes: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {}
         self.root_path = Path(SQLLineageConfig.DIRECTORY)
         self.metadata_provider = DummyMetaDataProvider()
@@ -68,6 +72,7 @@ class SQLLineageApp:
                     text = f.read()
                 return self.handle_200_text(start_response, mimetype, text)
             elif request_method == "POST":
+                print("routes:", self.routes)
                 if path_info in self.routes:
                     request_body_size = int(environ["CONTENT_LENGTH"])
                     request_body = environ["wsgi.input"].read(request_body_size)
@@ -78,6 +83,7 @@ class SQLLineageApp:
                         ).startswith(str(Path(self.root_path).absolute())):
                             return self.handle_403(start_response)
                     data = self.routes[path_info](payload)
+                    # print("data:", data)
                     return self.handle_200_json(start_response, data)
                 else:
                     return self.handle_404(start_response)
@@ -206,14 +212,14 @@ def directory(payload):
 
 
 def draw_lineage_graph(**kwargs) -> None:
-    host = kwargs.pop("host", DEFAULT_HOST)
+    host = kwargs.pop("host", DEFAULT_HOST) 
     port = kwargs.pop("port", DEFAULT_PORT)
-    querystring = urlencode({k: v for k, v in kwargs.items() if v})
-    path = f"/?{querystring}" if querystring else "/"
-    if f := kwargs.get("f"):
-        app.root_path = Path(f).parent
-    if metadata_provider := kwargs.get("metadata_provider"):
-        app.metadata_provider = metadata_provider
-    with make_server(host, port, app) as httpd:
-        print(f" * SQLLineage Running on http://{host}:{port}{path}")
-        httpd.serve_forever()
+    querystring = urlencode({k: v for k, v in kwargs.items() if v}) # 将字典转换为url参数
+    path = f"/?{querystring}" if querystring else "/" # 生成url
+    if f := kwargs.get("f"): # 获取文件路径
+        app.root_path = Path(f).parent # 设置文件路径
+    if metadata_provider := kwargs.get("metadata_provider"): # 获取元数据
+        app.metadata_provider = metadata_provider # 设置元数据
+    with make_server(host, port, app) as httpd: # 启动服务 
+        print(f" * SQLLineage Running on http://{host}:{port}{path}") # 打印服务地址
+        httpd.serve_forever()  # 服务一直运行
