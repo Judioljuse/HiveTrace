@@ -27,7 +27,7 @@ DEFAULT_LOGGING = {
     },
 }
 
-STATIC_FOLDER = "build"
+STATIC_FOLDER = "/home/zhengzong/workspace/DS/HiveTrace/HiveTrace/sqllineagejs/build"
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 5001
 SQLPARSE_DIALECT = "non-validating"
