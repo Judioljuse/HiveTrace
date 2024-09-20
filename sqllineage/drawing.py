@@ -26,6 +26,71 @@ from sqllineage.utils.helpers import extract_sql_from_args
 
 logger = logging.getLogger(__name__)
 
+import os
+
+def get_source_tables_from_sql(sql,format=False):
+    from sqllineage.runner import LineageRunner
+    try:
+        if format:
+            formatted_sql = format_sql(sql)
+        else:
+            formatted_sql = sql
+        result = LineageRunner(formatted_sql,dialect='non-validating')
+        source_tables = [str(i).split('.')[1] for i in result.source_tables]
+        return source_tables
+    except:
+        return []
+
+# def get_sql_from_table_name(table_name):
+#     query_data = {
+#         "table_name": table_name
+#     }
+#     response = api.post(query_data)
+#     return response[0]['file_content']
+
+def get_sql_from_table_name(table_name):
+    ## 在file_path内搜索table_name.sql，返回sql
+    file_path = '/home/zhengzong/workspace/DS/HiveTrace/HiveTrace/sqllineage/data/vgds/'
+    table_name =  table_name+'.sql'
+    ## 如果找不到，返回None，否则返回sql
+    if table_name not in os.listdir(file_path):
+        return None
+    with open(file_path+table_name,'r') as f:
+        sql = f.read()
+    return sql
+    
+
+## 给定初始化的sql，获取所有的source tables，返回一个list，继续递归直到无法通过table_name找到sql,
+## 把所有的sql都获取到，存在一个list里面，一开始的sql也要加进去
+## 再维护一个list，存储已经获取过的table_name，避免重复获取，如果已经获取过，就不再获取
+
+def get_all_source_tables(sql,all_sql,source_tables,level=3):
+    ## 超过5层递归，返回
+    if level == 0:
+        return
+    if sql is None:
+        return 
+    source_tables_ = get_source_tables_from_sql(sql)
+    print(source_tables_)
+    for table_name in source_tables_:
+        if table_name not in source_tables:
+            source_tables.append(table_name)
+            sql = get_sql_from_table_name(table_name)
+            all_sql.append(sql)
+            get_all_source_tables(sql,all_sql,source_tables,level-1)
+        
+            
+
+def combine_sql(sql_list):
+    # 去掉None  
+    sql_list = [i for i in sql_list if i is not None]
+    # print(len(sql_list))
+    # 如果最后不是分号结尾，加上分号
+    for i in range(len(sql_list)):
+        if sql_list[i][-1] != ';':
+            sql_list[i] += ';'
+    return '\n'.join(sql_list)
+
 
 class SQLLineageApp:
     """ 
@@ -183,12 +248,65 @@ def lineage(payload):
     }
     return data
 
+@app.route("/lineageall")
+def lineage(payload):
+    # this is to avoid circular import
+    from sqllineage.runner import LineageRunner
+
+    req_args = Namespace(**payload)
+    sql = extract_sql_from_args(req_args)
+
+    all_sql = []
+    source_tables = []
+    all_sql.append(sql)
+    get_all_source_tables(sql,all_sql,source_tables)
+    all_sql = [i for i in all_sql if i is not None]
+    print("len of all_sql:",len(all_sql))
+    if len(all_sql) > 5:
+        print("len of sql:",len(all_sql[0]))
+        print("len of sql_list:",len(combine_sql(all_sql[0:5])))
+        sql_all_ = combine_sql(all_sql[0:5])
+    else:
+        sql_all_ =  combine_sql(all_sql)
+
+    dialect = getattr(req_args, "dialect", DEFAULT_DIALECT)
+    lr = LineageRunner(
+        sql_all_, dialect=dialect, verbose=True, metadata_provider=app.metadata_provider
+    )
+    data = {
+        "verbose": str(lr),
+        "dag": lr.to_cytoscape(),
+        "column": lr.to_cytoscape(LineageLevel.COLUMN),
+    }
+    print("data:",data)
+    return data
+
+
 
 @app.route("/script")
 def script(payload):
     req_args = Namespace(**payload)
     sql = extract_sql_from_args(req_args)
     return {"content": sql}
+
+@app.route("/scriptall")
+def scriptall(payload):
+    req_args = Namespace(**payload)
+    sql = extract_sql_from_args(req_args)
+    # print("SCRIPTALL:", sql)
+    # 这里写递归函数，获取所有的sql
+    all_sql = []
+    source_tables = []
+    all_sql.append(sql)
+    get_all_source_tables(sql,all_sql,source_tables)
+    all_sql = [i for i in all_sql if i is not None]
+    print("len of all_sql:",len(all_sql))
+    if len(all_sql) > 5:
+        print("len of sql:",len(all_sql[0]))
+        print("len of sql_list:",len(combine_sql(all_sql[0:5])))
+        return {"content": combine_sql(all_sql[0:5])}
+    else:
+        return {"content": combine_sql(all_sql)}
 
 
 @app.route("/directory")

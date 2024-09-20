@@ -11,7 +11,8 @@ class Schema:
     Data Class for Schema
     """
 
-    unknown = "<default>"
+    # unknown = "<default>"
+    unknown = "vgds"
 
     def __init__(self, name: Optional[str] = None):
         """

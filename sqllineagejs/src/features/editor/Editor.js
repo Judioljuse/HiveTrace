@@ -8,7 +8,9 @@ import {
   setDagLevel,
   setEditable,
   setFile,
-  setDialect
+  setDialect,
+  fetchContentAll,
+  fetchDAGAll
 } from "./editorSlice";
 import MonacoEditor from "react-monaco-editor";
 import {Loading} from "../widget/Loading";
@@ -20,7 +22,7 @@ const useQueryParam = () => {
 };
 
 export function Editor(props) {
-  const { height, width, dialect } = props;
+  const { height, width, dialect,visualizeToBottom } = props;
   const dispatch = useDispatch();
   const editorState = useSelector(selectEditor);
   const queryParam = useQueryParam();
@@ -33,17 +35,26 @@ export function Editor(props) {
       history.push("/");
     } else {
       let file = queryParam.get("f");
-      if (editorState.file !== file || editorState.dialect !== dialect) {
+      if (editorState.file !== file || editorState.dialect !== dialect) { // 如果文件名或方言发生变化
         dispatch(setFile(file));
         dispatch(setDialect(dialect));
         dispatch(setDagLevel("table"));
         if (file === null) {
           dispatch(setEditable(true));
+          console.log("e:", editorState.contentComposed);
           dispatch(fetchDAG({"e": editorState.contentComposed}))
         } else {
           dispatch(setEditable(false));
-          dispatch(fetchContent({"f": file}));
-          dispatch(fetchDAG({"f": file}));
+          console.log("file !== nul, isualizeToBottom:", visualizeToBottom);
+          if (visualizeToBottom) {
+            dispatch(fetchContentAll({"f": file}))
+            dispatch(fetchDAGAll({"f": file}));
+          }
+          else {
+            dispatch(fetchContent({"f": file}));
+            dispatch(fetchDAG({"f": file}));
+          }
+          
         }
       }
     }

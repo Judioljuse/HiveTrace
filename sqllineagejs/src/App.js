@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {
   AppBar,
   Box,
@@ -16,7 +16,8 @@ import {
   RadioGroup,
   Toolbar,
   Tooltip,
-  Typography
+  Typography,
+  Switch // 引入 Switch 组件
 } from "@material-ui/core";
 import {DAG} from "./features/editor/DAG";
 import {Editor} from "./features/editor/Editor";
@@ -33,7 +34,6 @@ import {BrowserRouter as Router, Link} from "react-router-dom";
 import {DAGDesc} from "./features/editor/DAGDesc";
 import {useSelector} from "react-redux";
 import {selectEditor} from "./features/editor/editorSlice";
-
 
 const useStyles = makeStyles((theme) => ({
   appBar: {
@@ -82,7 +82,6 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-
 let isResizing = null;
 
 const dialects = {
@@ -115,14 +114,14 @@ const dialects = {
   ]
 }
 
-
 export default function App() {
   const editorState = useSelector(selectEditor);
-  const [viewSelected, setViewSelected] = React.useState('dag');
-  const [drawerOpen, setDrawerOpen] = React.useState(true);
-  const [drawerWidth, setDrawerWidth] = React.useState(18);
-  const [dialectMenuAnchor, setDialectMenuAnchor] = React.useState(null);
-  const [dialectSelected, setDialectSelected] = React.useState("ansi");
+  const [viewSelected, setViewSelected] = useState('dag');
+  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerWidth, setDrawerWidth] = useState(18);
+  const [dialectMenuAnchor, setDialectMenuAnchor] = useState(null);
+  const [dialectSelected, setDialectSelected] = useState("ansi");
+  const [visualizeToBottom, setVisualizeToBottom] = useState(false); // 管理是否可视化到最底层的开关状态
   const classes = useStyles({drawerWidth: drawerWidth});
 
   const height = "90vh";
@@ -131,11 +130,12 @@ export default function App() {
     return (drawerOpen ? full_width - drawerWidth : full_width) + "vw"
   }, [drawerOpen, drawerWidth])
 
+  // 拖动抽屉的事件处理函数
   const handleMouseDown = e => {
-    e.stopPropagation();
-    e.preventDefault();
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp)
+    e.stopPropagation(); // 阻止事件冒泡
+    e.preventDefault(); // 阻止默认事件
+    document.addEventListener("mousemove", handleMouseMove); // 添加鼠标移动事件监听
+    document.addEventListener("mouseup", handleMouseUp) // 添加鼠标抬起事件监听
     isResizing = true;
   };
 
@@ -232,6 +232,29 @@ export default function App() {
                 ))}
               </Menu>
 
+              <Tooltip title="Visualize SQL Lineage" arrow>
+                <Button
+                  color="inherit"
+                  onClick={() => {
+                    setViewSelected("dag");
+                  }}
+                >
+                  Visualize
+                </Button>
+              </Tooltip>
+
+              {/* 添加可视化到最底层的开关 */}
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={visualizeToBottom}
+                    onChange={() => setVisualizeToBottom(!visualizeToBottom)} //onChange={(event) => setViewSelected(event.target.value)}>
+                    color="primary"
+                  />
+                }
+                label="Visualize to Bottom"
+              />
+
               {editorState.editable ?
                 <Tooltip title="Visualize Lineage By Filling In Your Own SQL" arrow>
                   <div>Composing Mode</div>
@@ -274,37 +297,37 @@ export default function App() {
         >
           <Paper elevation="24" style={{height: height, width: width}}>
             <Box className={viewSelected === "dag" ? "" : classes.hide}>
-              <DAG height={height} width={width}/>
+              <DAG height={height} width={width} /> 
             </Box>
             <Box className={viewSelected === "text" ? "" : classes.hide}>
-              <DAGDesc height={height} width={width}/>
+              <DAGDesc height={height} width={width} />
             </Box>
             <Box className={viewSelected === "script" ? "" : classes.hide}>
-              <Editor height={height} width={width} dialect={dialectSelected}/>
+              <Editor height={height} width={width} dialect={dialectSelected} visualizeToBottom={visualizeToBottom}/>{/* 将开关状态传递给 DAG 组件 */}
             </Box>
           </Paper>
           <Grid container justify="center">
-            <FormControl component="fieldset">
-              <RadioGroup row aria-label="position" name="position" defaultValue="dag"
-                          value={viewSelected}
-                          onChange={(event) => setViewSelected(event.target.value)}>
-                <FormControlLabel
-                  value="dag"
-                  control={<Radio color="primary"/>}
-                  label="Lineage View"
-                />
-                <FormControlLabel
-                  value="text"
-                  control={<Radio color="primary"/>}
-                  label="Text View"
-                />
-                <FormControlLabel
-                  value="script"
-                  control={<Radio color="primary"/>}
-                  label="Script View"
-                />
-              </RadioGroup>
-            </FormControl>
+          <FormControl component="fieldset">
+            <RadioGroup row aria-label="position" name="position" defaultValue="dag"
+                        value={viewSelected}
+                        onChange={(event) => setViewSelected(event.target.value)}>
+              <FormControlLabel
+                value="dag"
+                control={<Radio color="primary"/>}
+                label="Lineage View"
+              />
+              <FormControlLabel
+                value="text"
+                control={<Radio color="primary"/>}
+                label="Text View"
+              />
+              <FormControlLabel
+                value="script"
+                control={<Radio color="primary"/>}
+                label="Script View"
+              />
+            </RadioGroup>
+          </FormControl>
           </Grid>
         </main>
       </div>

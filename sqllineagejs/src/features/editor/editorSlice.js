@@ -14,11 +14,17 @@ const initialState = {
   dagLevel: "table",
   dagVerbose: "",
   dagStatus: 'idle',
-  dagError: null
+  dagError: null,
+  visualizeToBottom: false // Added state for visualization control
 }
 
 export const fetchContent = createAsyncThunk('editor/fetchContent', async (payload) => {
   return await client.post(assemble_absolute_endpoint("/script"), payload);
+})
+
+export const fetchContentAll = createAsyncThunk('editor/fetchContentAll', async (payload) => {
+  console.log("fetchContentAll", payload )
+  return await client.post(assemble_absolute_endpoint("/scriptall"), payload);
 })
 
 export const fetchDAG = createAsyncThunk('dag/fetchDAG', async (payload) => {
@@ -28,6 +34,16 @@ export const fetchDAG = createAsyncThunk('dag/fetchDAG', async (payload) => {
   }
   return await client.post(assemble_absolute_endpoint("/lineage"), payload);
 })
+
+export const fetchDAGAll = createAsyncThunk('dag/fetchDAGAll', async (payload) => {
+  let dialect = localStorage.getItem("dialect");
+  if (dialect !== null) {
+    payload["dialect"] = dialect
+  }
+  console.log("lineageall", payload )
+  return await client.post(assemble_absolute_endpoint("/lineageall"), payload);
+})
+
 
 export const editorSlice = createSlice({
   name: 'editor',
@@ -47,6 +63,9 @@ export const editorSlice = createSlice({
     },
     setDagLevel(state, action) {
       state.dagLevel = action.payload
+    },
+    setVisualizeToBottom(state, action) {
+      state.visualizeToBottom = action.payload;
     }
   },
   extraReducers: {
@@ -71,6 +90,30 @@ export const editorSlice = createSlice({
       state.dagColumn = action.payload.column;
     },
     [fetchDAG.rejected]: (state, action) => {
+      state.dagStatus = "failed";
+      state.dagError = action.error.message;
+    },
+    [fetchContentAll.pending]: (state) => {
+      state.editorStatus = "loading"
+    },
+    [fetchContentAll.fulfilled]: (state, action) => {
+      state.editorStatus = "succeeded";
+      state.content = action.payload.content
+    },
+    [fetchContentAll.rejected]: (state, action) => {
+      state.editorStatus = "failed"
+      state.editorError = action.error.message
+    },
+    [fetchDAGAll.pending]: (state) => {
+      state.dagStatus = "loading"
+    },
+    [fetchDAGAll.fulfilled]: (state, action) => {
+      state.dagStatus = "succeeded";
+      state.dagContent = action.payload.dag;
+      state.dagVerbose = action.payload.verbose;
+      state.dagColumn = action.payload.column;
+    },
+    [fetchDAGAll.rejected]: (state, action) => {
       state.dagStatus = "failed";
       state.dagError = action.error.message;
     }
