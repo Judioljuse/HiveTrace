@@ -137,16 +137,34 @@ export function DAG(props) {
       cy.removeListener("click", "node");
       cy.on("click", "node", e => {
         let sel = e.target;
-        let columnLevel = cy.elements().some(e => e.isNode() && e.data().type === "Column");
-        if (sel.data().type === "Column" || !columnLevel) {
-          let elements = sel.union(sel.successors()).union(sel.predecessors());
+        let columnLevel = cy.elements().some(e => e.isNode() && e.data().type === "Column"); // 判断是否为列级别
+        // 找出所有与选中的节点有关的元素（前驱、后继、以及节点本身）
+        let relatedElements = sel.union(sel.successors()).union(sel.predecessors());
+        if (sel.data().type === "Column" || !columnLevel) { 
+          let elements = sel.union(sel.successors()).union(sel.predecessors()); 
           if (columnLevel) {
-            elements = elements.filter(e => e.isNode() && e.data().type === "Column");
+            elements = elements.filter(e => e.isNode() && e.data().type === "Column"); // 如果是列级别，仅保留列相关节点
+            relatedElements = relatedElements.filter(e => e.isNode() && e.data().type === "Column");
           }
-          if (elements.every(e => e.hasClass("highlight_locked"))) {
-            elements.removeClass("highlight_locked");
+          // if (elements.every(e => e.hasClass("highlight_locked"))) { // 处理高亮锁定逻辑, 如果节点都已经高亮锁定，则解锁
+          //   elements.removeClass("highlight_locked"); 
+          // } else {
+          //   elements.addClass("highlight_locked");
+          // }
+          // 高亮相关元素，锁定或解锁
+          if (relatedElements.every(e => e.hasClass("highlight_locked"))) {
+            relatedElements.removeClass("highlight_locked");
+            cy.elements().show(); // 显示所有元素
           } else {
-            elements.addClass("highlight_locked");
+            relatedElements.addClass("highlight_locked");
+
+            if (columnLevel) {
+              // 列级别：只隐藏列相关的无关节点
+              cy.elements().filter(e => e.data().type === "Column").difference(relatedElements).hide();
+            } else {
+              // 表级别：隐藏所有不相关的节点和边
+              cy.elements().difference(relatedElements).hide();
+            }
           }
         }
       })
