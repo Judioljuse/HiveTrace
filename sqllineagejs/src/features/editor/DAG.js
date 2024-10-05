@@ -6,7 +6,7 @@ import {useDispatch, useSelector} from "react-redux";
 import {selectEditor, setDagLevel} from "./editorSlice";
 import {Loading} from "../widget/Loading";
 import {LoadError} from "../widget/LoadError";
-import {SpeedDial, SpeedDialIcon, ToggleButton, ToggleButtonGroup} from "@material-ui/lab";
+import {SpeedDial, SpeedDialIcon, ToggleButton, ToggleButtonGroup,Autocomplete} from "@material-ui/lab";
 import {makeStyles} from "@material-ui/core/styles";
 import SpeedDialAction from '@material-ui/lab/SpeedDialAction';
 import SaveAltIcon from '@material-ui/icons/SaveAlt';
@@ -16,6 +16,7 @@ import ZoomOutIcon from '@material-ui/icons/ZoomOut';
 import TableChartIcon from '@material-ui/icons/TableChart';
 import ViewWeekIcon from '@material-ui/icons/ViewWeek';
 import {Tooltip} from "@material-ui/core";
+// import TextField from '@material-ui/core/TextField';
 
 cytoscape.use(dagre);
 
@@ -40,6 +41,8 @@ export function DAG(props) {
   const editorState = useSelector(selectEditor);
   const [open, setOpen] = React.useState(false);
   const cyRef = useRef(null);
+
+  // const [searchValue, setSearchValue] = React.useState(""); // 管理搜索框输入值
 
   const layoutTable = {
     name: 'dagre',
@@ -76,6 +79,39 @@ export function DAG(props) {
       dispatch(setDagLevel(value));
     }
   }
+
+  // const handleSearch = () => {
+  //   if (cyRef.current) {
+  //     let cy = cyRef.current._cy;
+  //     // 根据节点 ID 查找
+  //     let targetNode = cy.elements(`node[id="${searchValue}"]`);
+  //     if (targetNode.length > 0) {
+  //       // 高亮该节点
+  //       cy.elements().removeClass('highlight');
+  //       targetNode.addClass('highlight');
+  //       // 聚焦到该节点
+  //       cy.fit(targetNode, 50);  // 第二个参数是 padding, 可调整
+  //       // 清空搜索框
+  //       setSearchValue("");
+  //     } else {
+  //       console.log("Node not found");
+  //     }
+  //   }
+  // };
+
+  // const handleSearchChange = (event, value) => {
+  //   setSearchValue(value);
+  //   const cy = cyRef.current._cy;
+
+  //   // 移动视图到目标节点
+  //   const targetNode = cy.$(`node[id="${value}"]`);
+  //   if (targetNode.length > 0) {
+  //     cy.fit(targetNode, 50); // 将视图移动到节点，并保持50的缩放边距
+  //     cy.elements().removeClass("highlight"); // 移除之前的高亮
+  //     targetNode.addClass("highlight"); // 高亮搜索的节点
+  //   }
+  // };
+  // const columnNodes = cyRef.current._cy.nodes().filter(n => n.data().type === "Column").map(n => n.data().id); 
 
   useEffect(() => {
     if (cyRef.current) {
@@ -310,7 +346,17 @@ export function DAG(props) {
     ]
     const style = {width: props.width, height: props.height};
     return (
-      <div>
+      <div>      
+        {/* <Autocomplete
+          freeSolo
+          id="search"
+          value={searchValue}
+          onChange={handleSearchChange}
+          options={editorState.dagContent.filter(n => n.data.type === "Table").map(n => n.data.id)}
+          renderInput={(params) => <TextField {...params} label="Search Node" variant="outlined"/>}
+        />
+        <button onClick={handleSearch}>Search</button> */}
+        
         <CytoscapeComponent
           elements={editorState.dagContent}
           stylesheet={stylesheet}

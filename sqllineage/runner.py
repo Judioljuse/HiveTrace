@@ -230,3 +230,60 @@ Target Tables:
             ]
         )
         return dialects
+
+
+from typing import List
+from sqllineage.core.holders import SQLLineageHolder
+
+def merge_lineage_runners(runners: List[LineageRunner]) -> LineageRunner:
+    """
+    合并多个 LineageRunner 实例，将它们的血缘信息合并并返回一个新的 LineageRunner 实例。
+    
+    :param runners: LineageRunner 实例列表
+    :return: 合并后的新的 LineageRunner 实例
+    """
+    if not runners:
+        raise ValueError("The list of LineageRunner instances cannot be empty.")
+    
+    # 获取第一个 LineageRunner 作为基础
+    base_runner = runners[0]
+    
+    # 检查所有实例的方言和元数据提供者是否一致
+    dialect = base_runner._dialect
+    metadata_provider = base_runner._metadata_provider
+    
+    for runner in runners[1:]:
+        if runner._dialect != dialect:
+            raise ValueError("All LineageRunner instances must have the same SQL dialect.")
+        if type(runner._metadata_provider) != type(metadata_provider):
+            raise ValueError("All LineageRunner instances must have the same metadata providers.")
+    
+    # 合并 _stmt_holders 和 SQLLineageHolder 的信息
+    merged_stmt_holders = []
+    for runner in runners:
+        if not runner._evaluated:
+            runner._eval()  # 确保所有 runner 都已经被评估
+        merged_stmt_holders.extend(runner._stmt_holders)
+
+    # 使用合并的 _stmt_holders 创建新的 SQLLineageHolder
+    merged_sql_holder = SQLLineageHolder.of(metadata_provider, *merged_stmt_holders)
+    
+    # 创建一个新的 LineageRunner，使用第一个 runner 的配置信息，但合并后的血缘信息
+    merged_runner = LineageRunner(
+        sql="; ".join(runner._sql for runner in runners),  # 合并 SQL 作为记录，不会用于解析
+        dialect=dialect,
+        metadata_provider=metadata_provider,
+        verbose=base_runner._verbose,
+        silent_mode=base_runner._silent_mode,
+        draw_options=base_runner._draw_options
+    )
+    
+    # 将合并后的 stmt_holders 和 sql_holder 赋值给新的 runner
+    merged_runner._stmt_holders = merged_stmt_holders
+    merged_runner._sql_holder = merged_sql_holder
+    merged_runner._evaluated = True  # 标记为已评估
+
+    return merged_runner
+
+# # 将它们合并成一个新的 LineageRunner
+# result_all = merge_lineage_runners([result, result2])

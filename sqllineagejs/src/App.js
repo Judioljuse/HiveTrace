@@ -292,9 +292,7 @@ export default function App() {
           onMouseDown={handleMouseDown}
           className={clsx(classes.dragger, {[classes.hide]: !drawerOpen})}
         />
-        <main
-          className={clsx(classes.content, {[classes.contentShift]: drawerOpen})}
-        >
+        <main className={clsx(classes.content, {[classes.contentShift]: drawerOpen})}>
           <Paper elevation="24" style={{height: height, width: width}}>
             <Box className={viewSelected === "dag" ? "" : classes.hide}>
               <DAG height={height} width={width} /> 

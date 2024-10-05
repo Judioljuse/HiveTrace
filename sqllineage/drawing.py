@@ -28,6 +28,19 @@ logger = logging.getLogger(__name__)
 
 import os
 
+## 将sql_list组合为一个lineagerunner
+def combine_lineage(sql_list):
+    from sqllineage.runner import LineageRunner,merge_lineage_runners
+    lineage_list = []
+    for sql in sql_list:
+        try:
+            result = LineageRunner(sql,dialect='non-validating')
+            print(result)
+            lineage_list.append(result)
+        except:
+            continue
+    return merge_lineage_runners(lineage_list)
+
 def get_source_tables_from_sql(sql,format=False):
     from sqllineage.runner import LineageRunner
     try:
@@ -238,9 +251,15 @@ def lineage(payload):
     req_args = Namespace(**payload)
     sql = extract_sql_from_args(req_args)
     dialect = getattr(req_args, "dialect", DEFAULT_DIALECT)
-    lr = LineageRunner(
-        sql, dialect=dialect, verbose=True, metadata_provider=app.metadata_provider
-    )
+    if len(sql) < 1500:
+        lr = LineageRunner(
+            sql, dialect=dialect, verbose=True, metadata_provider=app.metadata_provider
+        )
+    else:
+        ## 将sql按照分号分割，然后合并
+        all_sql = sql.split(';')
+        all_sql = [i for i in all_sql if len(i) > 50]
+        lr = combine_lineage(all_sql)
     data = {
         "verbose": str(lr),
         "dag": lr.to_cytoscape(),
@@ -262,17 +281,23 @@ def lineage(payload):
     get_all_source_tables(sql,all_sql,source_tables)
     all_sql = [i for i in all_sql if i is not None]
     print("len of all_sql:",len(all_sql))
-    if len(all_sql) > 5:
-        print("len of sql:",len(all_sql[0]))
-        print("len of sql_list:",len(combine_sql(all_sql[0:5])))
-        sql_all_ = combine_sql(all_sql[0:5])
-    else:
-        sql_all_ =  combine_sql(all_sql)
+    # if len(all_sql) > 5:
+    #     print("len of sql:",len(all_sql[0]))
+    #     print("len of sql_list:",len(combine_sql(all_sql[0:5])))
+    #     sql_all_ = combine_sql(all_sql[0:5])
+    # else:
+    #     sql_all_ =  combine_sql(all_sql)
+    sql_all_ =  combine_sql(all_sql)
 
     dialect = getattr(req_args, "dialect", DEFAULT_DIALECT)
-    lr = LineageRunner(
-        sql_all_, dialect=dialect, verbose=True, metadata_provider=app.metadata_provider
-    )
+    try:
+        lr = LineageRunner(
+            sql_all_, dialect=dialect, verbose=True, metadata_provider=app.metadata_provider
+        )
+    except:
+        print('===========')
+        ## 将sql按照分号分割，然后合并
+        lr = combine_lineage(all_sql)
     data = {
         "verbose": str(lr),
         "dag": lr.to_cytoscape(),
