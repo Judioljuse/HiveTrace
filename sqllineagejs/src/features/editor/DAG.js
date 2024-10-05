@@ -16,7 +16,7 @@ import ZoomOutIcon from '@material-ui/icons/ZoomOut';
 import TableChartIcon from '@material-ui/icons/TableChart';
 import ViewWeekIcon from '@material-ui/icons/ViewWeek';
 import {Tooltip} from "@material-ui/core";
-// import TextField from '@material-ui/core/TextField';
+import TextField from "@material-ui/core/TextField";
 
 cytoscape.use(dagre);
 
@@ -42,7 +42,7 @@ export function DAG(props) {
   const [open, setOpen] = React.useState(false);
   const cyRef = useRef(null);
 
-  // const [searchValue, setSearchValue] = React.useState(""); // 管理搜索框输入值
+  const [selectedColumn, setSelectedColumn] = React.useState(""); // 用于存储选中的列节点
 
   const layoutTable = {
     name: 'dagre',
@@ -80,42 +80,36 @@ export function DAG(props) {
     }
   }
 
-  // const handleSearch = () => {
-  //   if (cyRef.current) {
-  //     let cy = cyRef.current._cy;
-  //     // 根据节点 ID 查找
-  //     let targetNode = cy.elements(`node[id="${searchValue}"]`);
-  //     if (targetNode.length > 0) {
-  //       // 高亮该节点
-  //       cy.elements().removeClass('highlight');
-  //       targetNode.addClass('highlight');
-  //       // 聚焦到该节点
-  //       cy.fit(targetNode, 50);  // 第二个参数是 padding, 可调整
-  //       // 清空搜索框
-  //       setSearchValue("");
-  //     } else {
-  //       console.log("Node not found");
-  //     }
-  //   }
-  // };
-
-  // const handleSearchChange = (event, value) => {
-  //   setSearchValue(value);
-  //   const cy = cyRef.current._cy;
-
-  //   // 移动视图到目标节点
-  //   const targetNode = cy.$(`node[id="${value}"]`);
-  //   if (targetNode.length > 0) {
-  //     cy.fit(targetNode, 50); // 将视图移动到节点，并保持50的缩放边距
-  //     cy.elements().removeClass("highlight"); // 移除之前的高亮
-  //     targetNode.addClass("highlight"); // 高亮搜索的节点
-  //   }
-  // };
-  // const columnNodes = cyRef.current._cy.nodes().filter(n => n.data().type === "Column").map(n => n.data().id); 
+  // 列节点下拉框变化处理函数
+  const handleColumnSearch = (event, value) => {
+    setSelectedColumn(value);
+    if (cyRef.current) {  
+      let cy = cyRef.current._cy;
+      let columnNode = cy.$(`node[id="${value}"]`);
+      if (columnNode.length > 0) { 
+        cy.elements().removeClass('highlight_locked');  // 移除之前的高亮
+        console.log(editorState.dagLevel);
+        if (editorState.dagLevel === 'table') {
+          // 如果在表级别，直接高亮列节点
+          columnNode.addClass('highlight_locked');
+          cy.fit(columnNode, 50);  // 聚焦列节点
+        } else {
+          // 如果在列级别，直接高亮列节点
+          columnNode.addClass('highlight_locked');
+          cy.fit(columnNode, 50);  // 聚焦列节点
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     if (cyRef.current) {
       let cy = cyRef.current._cy;
+
+      // 初始化时移除所有元素上的 highlight_locked 类
+      cy.elements().removeClass("highlight_locked");
+
+      // 鼠标悬浮事件
       cy.on("mouseover", "node", function (e) {
         let sel = e.target;
         // current node has parent node: children node to highlight in column lineage
@@ -163,6 +157,7 @@ export function DAG(props) {
           }
         }
       });
+      // 鼠标移出事件
       cy.on("mouseout", "node", function () {
         cy.elements().removeClass("semitransparent");
         cy.elements().removeClass("highlight");
@@ -182,13 +177,9 @@ export function DAG(props) {
             elements = elements.filter(e => e.isNode() && e.data().type === "Column"); // 如果是列级别，仅保留列相关节点
             relatedElements = relatedElements.filter(e => e.isNode() && e.data().type === "Column");
           }
-          // if (elements.every(e => e.hasClass("highlight_locked"))) { // 处理高亮锁定逻辑, 如果节点都已经高亮锁定，则解锁
-          //   elements.removeClass("highlight_locked"); 
-          // } else {
-          //   elements.addClass("highlight_locked");
-          // }
+
           // 高亮相关元素，锁定或解锁
-          if (relatedElements.every(e => e.hasClass("highlight_locked"))) {
+          if (relatedElements.every(e => e.hasClass("highlight_locked"))) {  // 如果所有相关元素都已锁定
             relatedElements.removeClass("highlight_locked");
             cy.elements().show(); // 显示所有元素
           } else {
@@ -222,8 +213,14 @@ export function DAG(props) {
         }
       });
     }
-  })
+  });
 
+  // 根据daglevel选择显示的节点
+  const showOptions = editorState.dagLevel === 'table' ?
+    editorState.dagContent.map(n => n.data.id) :
+    editorState.dagColumn.filter(n => n.data.type === "Column").map(n => n.data.id);
+
+  
   if (editorState.dagStatus === "loading") {
     return <Loading minHeight={props.height}/>
   } else if (editorState.dagStatus === "failed") {
@@ -347,15 +344,17 @@ export function DAG(props) {
     const style = {width: props.width, height: props.height};
     return (
       <div>      
-        {/* <Autocomplete
-          freeSolo
-          id="search"
-          value={searchValue}
-          onChange={handleSearchChange}
-          options={editorState.dagContent.filter(n => n.data.type === "Table").map(n => n.data.id)}
-          renderInput={(params) => <TextField {...params} label="Search Node" variant="outlined"/>}
+        {/* 添加列节点的下拉框 */}
+        <Autocomplete
+          id="column-search"
+          options={showOptions}
+          value={selectedColumn}
+          onChange={handleColumnSearch}
+          renderInput={(params) => (
+            <TextField {...params} label="Select Column" variant="outlined" />
+          )}
+          style={{ marginBottom: '16px' }}  // 可调整样式
         />
-        <button onClick={handleSearch}>Search</button> */}
         
         <CytoscapeComponent
           elements={editorState.dagContent}
@@ -368,6 +367,7 @@ export function DAG(props) {
           wheelSensitivity={0.2}
           ref={cyRef}
         />
+        {/* 切换表和列级别的按钮 */}
         <ToggleButtonGroup
           orientation="vertical"
           value={editorState.dagLevel}

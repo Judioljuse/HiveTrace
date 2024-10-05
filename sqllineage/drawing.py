@@ -290,14 +290,7 @@ def lineage(payload):
     sql_all_ =  combine_sql(all_sql)
 
     dialect = getattr(req_args, "dialect", DEFAULT_DIALECT)
-    try:
-        lr = LineageRunner(
-            sql_all_, dialect=dialect, verbose=True, metadata_provider=app.metadata_provider
-        )
-    except:
-        print('===========')
-        ## 将sql按照分号分割，然后合并
-        lr = combine_lineage(all_sql)
+    lr = combine_lineage(all_sql)
     data = {
         "verbose": str(lr),
         "dag": lr.to_cytoscape(),
