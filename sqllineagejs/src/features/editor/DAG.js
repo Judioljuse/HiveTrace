@@ -17,8 +17,14 @@ import TableChartIcon from '@material-ui/icons/TableChart';
 import ViewWeekIcon from '@material-ui/icons/ViewWeek';
 import {Tooltip} from "@material-ui/core";
 import TextField from "@material-ui/core/TextField";
+import navigator from 'cytoscape-navigator'; // 导入 navigator
 
 cytoscape.use(dagre);
+cytoscape.use(navigator); // 启用 navigator
+
+if (typeof cytoscape("core", "navigator") === "undefined") {
+  navigator(cytoscape);
+}
 
 const useStyles = makeStyles((theme) => ({
   speedDial: {
@@ -31,6 +37,16 @@ const useStyles = makeStyles((theme) => ({
     right: theme.spacing(0),
     bottom: theme.spacing(50),
     zIndex: 100
+  },
+  navigator: {
+    position: 'absolute',
+    bottom: theme.spacing(10),
+    right: theme.spacing(10),
+    width: '200px',
+    height: '200px',
+    border: '1px solid #ccc',
+    backgroundColor: '#fff',
+    zIndex: 1000,
   }
 }))
 
@@ -55,6 +71,19 @@ export function DAG(props) {
     rankDir: 'LR',
     rankSep: 60,
     nodeSep: 15,
+  };
+
+  // 配置 Navigator (小地图)
+  const navigatorDefaults = {
+    container: '#navigator',  // 使用已有的 className 或者容器
+    viewLiveFramerate: 0,  // 实时拖动
+    thumbnailEventFramerate: 30,  // 缩略图刷新频率
+    thumbnailLiveFramerate: false,  // 禁用实时缩略图更新
+    dblClickDelay: 200,
+    removeCustomContainer: true,
+    rerenderDelay: 100,  // 渲染更新延迟
+    handleDrag: true,
+    zoom: true,
   };
 
   const handleSave = () => {
@@ -88,7 +117,6 @@ export function DAG(props) {
       let columnNode = cy.$(`node[id="${value}"]`);
       if (columnNode.length > 0) { 
         cy.elements().removeClass('highlight_locked');  // 移除之前的高亮
-        console.log(editorState.dagLevel);
         if (editorState.dagLevel === 'table') {
           // 如果在表级别，直接高亮列节点
           columnNode.addClass('highlight_locked');
@@ -105,6 +133,20 @@ export function DAG(props) {
   useEffect(() => {
     if (cyRef.current) {
       let cy = cyRef.current._cy;
+
+      // let cy = cytoscape({
+      //   container: document.getElementById('navigator'),
+      //   elements: cyRef.current._cy.elements(),
+      //   style: stylesheet,
+      //   layout: layoutTable,
+      //   zoom: 1,
+      //   minZoom: 0.5,
+      //   maxZoom: 2,
+      //   wheelSensitivity: 0.2,
+      // });
+
+      // 初始化小地图
+      cy.navigator(navigatorDefaults);
 
       // 初始化时移除所有元素上的 highlight_locked 类
       cy.elements().removeClass("highlight_locked");
@@ -343,7 +385,8 @@ export function DAG(props) {
     ]
     const style = {width: props.width, height: props.height};
     return (
-      <div>      
+      <div style={{ position: 'relative' }}>    
+        <div id="navigator" className={classes.navigator}></div>
         {/* 添加列节点的下拉框 */}
         <Autocomplete
           id="column-search"
